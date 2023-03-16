@@ -1,0 +1,180 @@
+document.addEventListener("DOMContentLoaded", function () {
+  const menu = document.getElementById("menu");
+  const game = document.getElementById("game");
+
+
+  // Hide game initially
+  game.style.display = "none";
+
+  // Add event listener to start button
+  const startButton = document.getElementById("start-button");
+  startButton.addEventListener("click", function () {
+    // Show game and hide menu on click
+    menu.style.display = "none";
+    game.style.display = "block";
+  });
+});
+
+const plane = document.getElementById("plane");
+const gameContainer = document.getElementById("game-container");
+
+// Touch event listeners
+document.addEventListener("touchstart", handleTouchStart, false);
+document.addEventListener("touchmove", handleTouchMove, false);
+
+// Variables to track touch movement
+let startX, startY, currentX, currentY, moveX, moveY;
+
+function handleTouchStart(e) {
+  // Get the initial touch coordinates
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+}
+
+function handleTouchMove(e) {
+  // Prevent default touch behavior
+  e.preventDefault();
+
+  // Get the current touch coordinates
+  currentX = e.touches[0].clientX;
+  currentY = e.touches[0].clientY;
+
+  // Calculate the distance moved from the initial touch point
+  moveX = currentX - startX;
+  moveY = currentY - startY;
+
+  // Calculate the new position of the plane
+  let newPlaneLeft = plane.offsetLeft + moveX;
+  let newPlaneTop = plane.offsetTop + moveY;
+  // Check if the new position is within the game container
+  if (newPlaneLeft >= 0 && newPlaneLeft + plane.offsetWidth <= gameContainer.offsetWidth) {
+    plane.style.left = newPlaneLeft + "px";
+  }
+
+  if (newPlaneTop >= 0 && newPlaneTop + plane.offsetHeight <= gameContainer.offsetHeight) {
+    plane.style.top = newPlaneTop + "px";
+  }
+
+  // Update the starting touch coordinates for the next touch movement
+  startX = currentX;
+  startY = currentY;
+}
+
+function shoot() {
+  // Create a new bullet element and add it to the game container
+  const bullet = document.createElement("div");
+  bullet.classList.add("bullet");
+  bullet.style.left = (plane.offsetLeft + plane.offsetWidth / 30 - 4 - parseInt(getComputedStyle(plane).marginLeft)) + "px";
+  bullet.style.top = (plane.offsetTop - 10) + "px";
+  gameContainer.appendChild(bullet);
+
+  // Animate the bullet
+  const bulletIntervalId = setInterval(() => {
+    bullet.style.top = (bullet.offsetTop - 10) + "px";
+
+    // Check for collision with stones
+        const stones = document.querySelectorAll('.stone');
+    stones.forEach((stone) => {
+        if (bullet.offsetTop <= stone.offsetTop + stone.offsetHeight && bullet.offsetTop >= stone.offsetTop && bullet.offsetLeft >= stone.offsetLeft && bullet.offsetLeft <= stone.offsetLeft + stone.offsetWidth) {
+            //Collision detected, remove bullet and stone
+            clearInterval(bulletIntervalId);
+            gameContainer.removeChild(stone);
+            gameContainer.removeChild(bullet);
+            let force = document.getElementById("force-value");
+            force.innerHTML = parseInt(force.innerHTML) + 10;
+        }
+    });
+
+    // Remove bullet when it goes out of the game container
+    if (bullet.offsetTop < -10) {
+      clearInterval(bulletIntervalId);
+      gameContainer.removeChild(bullet);
+    }
+  }, 50);
+}
+
+// Shoot bullets when touching the screen
+let intervalId;
+
+function startShooting() {
+  // Start shooting every 0.5 seconds
+  intervalId = setInterval(shoot, 500);
+
+  // Create stones during the game
+  const stoneIntervalId = setInterval(createStone, 1000);
+}
+
+function stopShooting() {
+  // Stop shooting
+  clearInterval(intervalId);
+}
+
+// Detect touch events
+document.addEventListener("touchstart", startShooting);
+document.addEventListener("touchend", stopShooting);
+
+// Function to create a new stone element
+// Function to create a new stone element
+function createStone() {
+
+
+  const stone = document.createElement("div");
+  const stoneId = Date.now().toString(); // Generate unique ID for the stone
+  stone.id = stoneId;
+  stone.classList.add("stone");
+  stone.style.left = Math.floor(Math.random() * (gameContainer.offsetWidth - stone.offsetWidth)) + "px";
+  stone.style.top = "50px";
+  gameContainer.appendChild(stone);
+
+
+
+  // Move stone towards the plane
+  const stoneIntervalId = setInterval(() => {
+    let newStoneTop = stone.offsetTop + 10;
+    stone.style.top = newStoneTop + "px";
+
+    // Check for collision with the plane
+    if (newStoneTop + stone.offsetHeight >= plane.offsetTop &&
+        newStoneTop <= plane.offsetTop + plane.offsetHeight &&
+        stone.offsetLeft + stone.offsetWidth >= plane.offsetLeft &&
+        stone.offsetLeft <= plane.offsetLeft + plane.offsetWidth) {
+      // Collision detected, end game
+      clearInterval(stoneIntervalId);
+      clearInterval(intervalId);
+      showGameOver();
+    }
+
+    // Remove stone when it goes out of the game container
+    if (newStoneTop > gameContainer.offsetHeight) {
+      clearInterval(stoneIntervalId);
+      gameContainer.removeChild(document.getElementById(stoneId)); // Remove stone from DOM
+    }
+
+    // Increase force when a stone is destroyed
+    const bullets = document.querySelectorAll('.bullet');
+    bullets.forEach((bullet) => {
+      if (newStoneTop >= bullet.offsetTop &&
+          newStoneTop <= bullet.offsetTop + bullet.offsetHeight &&
+          stone.offsetLeft >= bullet.offsetLeft - stone.offsetWidth / 2 &&
+          stone.offsetLeft <= bullet.offsetLeft + bullet.offsetWidth - stone.offsetWidth / 2) {
+        // Collision detected, remove bullet and stone, increase force
+        clearInterval(stoneIntervalId);
+                clearInterval(bulletIntervalId);
+        gameContainer.removeChild(stone);
+        gameContainer.removeChild(bullet);
+        /////////////
+        const scoreValueEl = document.getElementById('force-value');
+let scoreValue = parseInt(scoreValueEl.innerText);
+scoreValue += 10;
+scoreValueEl.innerText = scoreValue;
+        /////////////
+      }
+    });
+  }, 50 + Math.floor(Math.random() * 100));
+}
+
+// Create stones and move towards the plane
+for (let i=0; i < 5; i++) {
+  createStone();
+}
+
